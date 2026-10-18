@@ -1,0 +1,12 @@
+{
+  "name": "DYNIX TRACE",
+  "short_name": "TRACE",
+  "description": "Integrity console for competitive gaming — scan. trace. reveal the truth.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#000000",
+  "theme_color": "#000000",
+  "icons": [
+    { "src": "/icon.svg", "sizes": "any", "type": "image/svg+xml", "purpose": "any" }
+  ]
+}

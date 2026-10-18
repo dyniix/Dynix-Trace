@@ -1,0 +1,157 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+  --font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+html {
+  color-scheme: dark;
+}
+
+html,
+body,
+#root {
+  min-height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #000;
+  color: #fff;
+  font-family: var(--font-sans);
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+
+::selection {
+  background: rgba(34, 211, 238, 0.28);
+  color: #fff;
+}
+
+/* ── gooey CTA ── */
+.gooey-filter {
+  filter: url(#gooey);
+}
+
+/* ── shimmering headline ── */
+.text-shimmer {
+  background: linear-gradient(
+    110deg,
+    rgba(255, 255, 255, 0.55) 30%,
+    rgba(255, 255, 255, 0.92) 45%,
+    rgba(165, 243, 252, 0.8) 52%,
+    rgba(255, 255, 255, 0.55) 68%
+  );
+  background-size: 220% auto;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: shimmer 7s linear infinite;
+}
+
+@keyframes shimmer {
+  to {
+    background-position: -220% center;
+  }
+}
+
+/* ── glow for the big word ── */
+.glow-cyan {
+  text-shadow:
+    0 0 80px rgba(34, 211, 238, 0.22),
+    0 0 26px rgba(34, 211, 238, 0.1);
+}
+
+/* ── atmosphere overlays ── */
+.vignette {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  background:
+    radial-gradient(72% 58% at 50% 44%, transparent 40%, rgba(0, 0, 0, 0.78) 100%),
+    linear-gradient(
+      180deg,
+      rgba(0, 0, 0, 0.62) 0%,
+      transparent 24%,
+      transparent 72%,
+      rgba(0, 0, 0, 0.85) 100%
+    );
+}
+
+.scanlines {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.06;
+  mix-blend-mode: overlay;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(255, 255, 255, 0.55) 0 1px,
+    transparent 1px 3px
+  );
+}
+
+.grain {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.14;
+  mix-blend-mode: overlay;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='180' height='180'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='3' stitchTiles='stitch'/><feColorMatrix type='saturate' values='0'/></filter><rect width='180' height='180' filter='url(%23n)' opacity='0.5'/></svg>");
+}
+
+/* ── rotating seal text ── */
+.spin-slow {
+  transform-origin: center;
+  animation: spin-slow 46s linear infinite;
+}
+
+@keyframes spin-slow {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* ── tracing sweep ── */
+.scan-sweep {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: -20%;
+  height: 22vh;
+  z-index: 15;
+  pointer-events: none;
+  background: linear-gradient(
+    180deg,
+    transparent,
+    rgba(34, 211, 238, 0.13) 45%,
+    rgba(34, 211, 238, 0.05) 60%,
+    transparent
+  );
+  animation: sweep 1.8s linear infinite;
+}
+
+@keyframes sweep {
+  to {
+    transform: translateY(140vh);
+  }
+}
+
+/* ── reduced motion ── */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+
+  .text-shimmer {
+    background: none;
+    -webkit-background-clip: initial;
+    background-clip: initial;
+    color: rgba(255, 255, 255, 0.9);
+  }
+}
