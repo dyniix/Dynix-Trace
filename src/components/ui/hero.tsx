@@ -1,7 +1,8 @@
-import { useEffect, useRef, useState } from "react";
-import { motion, useReducedMotion } from "motion/react";
+import { useEffect, useRef, useState, type Ref } from "react";
+import { AnimatePresence, motion, useReducedMotion } from "motion/react";
 import { MeshGradient, PulsingBorder } from "@paper-design/shaders-react";
-import { ArrowUpRight } from "lucide-react";
+import { ArrowUpRight, LoaderCircle } from "lucide-react";
+import TargetModal from "@/components/ui/target-modal";
 import {
   BRAND,
   BRAND_LINE,
@@ -13,10 +14,12 @@ import {
   HERO_LINES,
   HERO_PARAGRAPH,
   MONITOR_LABEL,
+  MONITOR_NOTE,
   NAV_LINKS,
   ROTATING_TEXT,
   STATUS,
   VERSION,
+  type Game,
 } from "@/data";
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
@@ -63,23 +66,46 @@ function Monogram({ className }: { className?: string }) {
   );
 }
 
-function GooeyButton({ active, onClick }: { active: boolean; onClick: () => void }) {
+function TraceButton({
+  active,
+  onClick,
+  buttonRef,
+}: {
+  active: boolean;
+  onClick: () => void;
+  buttonRef: Ref<HTMLButtonElement>;
+}) {
   return (
     <button
+      ref={buttonRef}
       type="button"
-      onClick={onClick}
-      className="group relative h-12 w-60 cursor-pointer outline-none transition-transform duration-150 active:scale-[0.985] focus-visible:ring-2 focus-visible:ring-cyan-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+      onClick={active ? undefined : onClick}
+      aria-busy={active}
+      aria-disabled={active}
+      aria-haspopup="dialog"
+      className={`group relative h-13 w-64 rounded-full outline-none transition-transform duration-200 ease-out focus-visible:ring-2 focus-visible:ring-cyan-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-black active:translate-y-0 active:scale-[0.985] ${
+        active ? "pointer-events-none" : "cursor-pointer hover:-translate-y-0.5"
+      }`}
     >
-      <span aria-hidden className="gooey-filter absolute inset-0 block">
-        <span className="absolute left-0 top-1/2 h-10 w-[calc(100%-3.25rem)] -translate-y-1/2 rounded-full bg-white transition-[width] duration-300 ease-out group-hover:w-[calc(100%-1.5rem)]" />
-        <span className="absolute right-0 top-1/2 size-12 -translate-y-1/2 rounded-full bg-white" />
+      <span aria-hidden className="absolute inset-0 block">
+        <span className="absolute left-0 top-1/2 h-13 w-[calc(100%-4rem)] -translate-y-1/2 overflow-hidden rounded-full bg-white">
+          <span className="absolute inset-0 -translate-x-full bg-[linear-gradient(90deg,transparent,rgba(34,211,238,0.25),transparent)] transition-transform duration-0 ease-out group-hover:translate-x-full group-hover:duration-700" />
+        </span>
+        <span className="absolute right-0 top-1/2 size-13 -translate-y-1/2 rounded-full bg-white" />
       </span>
       <span className="relative z-10 flex h-full items-center pl-6">
-        <span className="text-[13px] font-semibold uppercase tracking-[0.18em] text-black">
+        <span className="text-[13px] font-bold uppercase tracking-[0.18em] text-black">
           {active ? CTAS.primaryActive : CTAS.primary}
         </span>
-        <span className="absolute right-0 top-1/2 grid size-12 -translate-y-1/2 place-items-center">
-          <ArrowUpRight aria-hidden className="size-4 text-black transition-transform duration-300 group-hover:rotate-45" />
+        <span className="absolute right-0 top-1/2 grid size-13 -translate-y-1/2 place-items-center">
+          {active ? (
+            <LoaderCircle aria-hidden className="size-4 animate-spin text-black" />
+          ) : (
+            <ArrowUpRight
+              aria-hidden
+              className="size-4 text-black transition-transform duration-300 group-hover:rotate-45"
+            />
+          )}
         </span>
       </span>
     </button>
@@ -138,15 +164,12 @@ function RotatingSeal({ active, reduced }: { active: boolean; reduced: boolean }
 }
 
 export default function Hero() {
+  const [modalOpen, setModalOpen] = useState(false);
+  const [target, setTarget] = useState<Game | null>(null);
   const [tracing, setTracing] = useState(false);
-  const reduced = useReducedMotion() ?? false;
+  const buttonRef = useRef<HTMLButtonElement>(null);
   const timerRef = useRef<number | null>(null);
-
-  const startTrace = () => {
-    if (tracing) return;
-    setTracing(true);
-    timerRef.current = window.setTimeout(() => setTracing(false), TRACE_MS);
-  };
+  const reduced = useReducedMotion() ?? false;
 
   useEffect(() => {
     return () => {
@@ -154,20 +177,37 @@ export default function Hero() {
     };
   }, []);
 
+  const startTrace = () => {
+    if (timerRef.current !== null) window.clearTimeout(timerRef.current);
+    setTracing(true);
+    timerRef.current = window.setTimeout(() => setTracing(false), TRACE_MS);
+  };
+
+  const closeTargetModal = () => {
+    setModalOpen(false);
+    requestAnimationFrame(() => buttonRef.current?.focus());
+  };
+
+  const confirmTarget = (id: string) => {
+    setTarget(GAMES.find((game) => game.id === id) ?? null);
+    setModalOpen(false);
+    requestAnimationFrame(() => {
+      buttonRef.current?.focus();
+      startTrace();
+    });
+  };
+
   return (
     <section className="relative flex min-h-svh w-full flex-col overflow-hidden bg-black text-white">
       <MeshGradient
         className="absolute inset-0 size-full"
-        colors={["#164e63", "#0e7490", "#22d3ee", "#f97316"]}
-        distortion={0.82}
-        swirl={0.55}
-        grainMixer={0.24}
-        grainOverlay={0.12}
-        speed={reduced ? 0 : tracing ? 1.7 : 0.6}
-        style={{
-          opacity: tracing ? 0.95 : 0.8,
-          transition: "opacity 700ms cubic-bezier(0.16, 1, 0.3, 1)",
-        }}
+        colors={["#000000", "#06b6d4", "#0891b2", "#164e63", "#f97316"]}
+        speed={reduced ? 0 : tracing ? 0.45 : 0.3}
+      />
+      <MeshGradient
+        className="absolute inset-0 size-full opacity-60"
+        colors={["#000000", "#ffffff", "#06b6d4", "#f97316"]}
+        speed={reduced ? 0 : tracing ? 0.3 : 0.2}
       />
 
       <div className="vignette" />
@@ -241,10 +281,10 @@ export default function Hero() {
           <span role="status" className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.25em] text-white/60 backdrop-blur sm:inline-flex">
             <span
               className={`size-1.5 rounded-full ${
-                tracing ? "animate-pulse bg-cyan-300" : "bg-emerald-400"
+                tracing ? "animate-pulse bg-cyan-300" : target ? "bg-cyan-300" : "bg-emerald-400"
               }`}
             />
-            {tracing ? STATUS.active : STATUS.idle}
+            {tracing ? STATUS.active : target ? `Target — ${target.label}` : STATUS.idle}
           </span>
         </div>
       </motion.nav>
@@ -301,7 +341,7 @@ export default function Hero() {
           >
             {CTAS.secondary}
           </a>
-          <GooeyButton active={tracing} onClick={startTrace} />
+          <TraceButton active={tracing} onClick={() => setModalOpen(true)} buttonRef={buttonRef} />
         </motion.div>
 
         <motion.div {...fadeUp(0.92, reduced)} className="mt-14 flex flex-col items-center gap-4 [@media(max-height:800px)]:mt-8">
@@ -326,6 +366,9 @@ export default function Hero() {
               </span>
             ))}
           </div>
+          <span className="font-mono text-[10px] uppercase tracking-[0.2em] text-white/50">
+            {MONITOR_NOTE}
+          </span>
         </motion.div>
       </div>
 
@@ -345,18 +388,18 @@ export default function Hero() {
             <stop offset="55%" stopColor="#22d3ee" />
             <stop offset="100%" stopColor="#f97316" />
           </linearGradient>
-          <filter id="gooey">
-            <feGaussianBlur in="SourceGraphic" stdDeviation="5" result="blur" />
-            <feColorMatrix
-              in="blur"
-              mode="matrix"
-              values="1 0 0 0 0  0 1 0 0 0  0 0 1 0 0  0 0 0 18 -8"
-              result="goo"
-            />
-            <feComposite in="SourceGraphic" in2="goo" operator="atop" />
-          </filter>
         </defs>
       </svg>
+
+      <AnimatePresence>
+        {modalOpen && (
+          <TargetModal
+            initialId={target?.id ?? null}
+            onCancel={closeTargetModal}
+            onConfirm={confirmTarget}
+          />
+        )}
+      </AnimatePresence>
     </section>
   );
 }
