@@ -69,152 +69,115 @@ export default function TargetModal({ initialId, onCancel, onConfirm }: TargetMo
 
   return (
     <motion.div
-      initial={{ backdropFilter: "blur(0px)", backgroundColor: "rgba(0, 0, 0, 0)" }}
-      animate={{ backdropFilter: "blur(12px)", backgroundColor: "rgba(0, 0, 0, 0.7)" }}
+      initial={{
+        backdropFilter: "blur(0px) saturate(115%)",
+        backgroundColor: "rgba(3, 9, 11, 0)",
+      }}
+      animate={{
+        backdropFilter: "blur(10px) saturate(115%)",
+        backgroundColor: "rgba(3, 9, 11, 0.52)",
+      }}
       exit={{
-        backdropFilter: "blur(0px)",
-        backgroundColor: "rgba(0, 0, 0, 0)",
+        backdropFilter: "blur(0px) saturate(115%)",
+        backgroundColor: "rgba(3, 9, 11, 0)",
         transition: { duration: reduced ? 0 : 0.2, ease: [0.4, 0, 1, 1] },
       }}
       transition={{ duration: reduced ? 0 : 0.45, ease: [0.4, 0, 0.2, 1] }}
       onClick={onCancel}
-      className="fixed inset-0 z-50 overflow-y-auto"
+      className="dynix-modal-backdrop"
     >
-      <div className="flex min-h-full items-center justify-center p-4 sm:p-6">
-        <motion.div
-          ref={panelRef}
-          role="dialog"
-          aria-modal="true"
-          aria-labelledby="target-modal-title"
-          tabIndex={-1}
-          onClick={(event) => event.stopPropagation()}
-          onKeyDown={handleKeyDown}
-          initial={{ opacity: 0, y: reduced ? 0 : 14, scale: reduced ? 1 : 0.99 }}
-          animate={{ opacity: 1, y: 0, scale: 1 }}
-          exit={{
-            opacity: 0,
-            y: reduced ? 0 : 8,
-            scale: reduced ? 1 : 0.99,
-            transition: { duration: reduced ? 0 : 0.14, ease: EASE },
-          }}
-          transition={{ duration: reduced ? 0 : 0.38, ease: [0.4, 0, 0.2, 1] }}
-          className="relative flex max-h-[calc(100dvh-2rem)] w-full max-w-lg flex-col overflow-hidden rounded-2xl border border-white/10 bg-[#0a0e11]/95 shadow-[0_28px_70px_-28px_rgba(0,0,0,0.9)] outline-none"
-        >
-          <header className="relative flex items-start justify-between gap-4 px-5 pt-5 sm:px-6 sm:pt-6">
-            <div>
-              <span className="font-mono text-[10px] uppercase tracking-[0.3em] text-cyan-200/70">
-                {TARGET_MODAL.kicker}
-              </span>
-              <h2
-                id="target-modal-title"
-                className="mt-2 text-xl font-bold uppercase tracking-[0.04em] text-white sm:text-2xl"
+      <motion.div
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="target-modal-title"
+        tabIndex={-1}
+        onClick={(event) => event.stopPropagation()}
+        onKeyDown={handleKeyDown}
+        initial={{ opacity: 0, y: reduced ? 0 : 14, scale: reduced ? 1 : 0.99 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{
+          opacity: 0,
+          y: reduced ? 0 : 8,
+          scale: reduced ? 1 : 0.99,
+          transition: { duration: reduced ? 0 : 0.14, ease: EASE },
+        }}
+        transition={{ duration: reduced ? 0 : 0.38, ease: [0.4, 0, 0.2, 1] }}
+        className="dynix-modal outline-none"
+      >
+        <header className="dynix-modal-header">
+          <div>
+            <p className="dynix-modal-eyebrow">{TARGET_MODAL.kicker}</p>
+            <h2 id="target-modal-title" className="dynix-modal-title">
+              {TARGET_MODAL.title}
+            </h2>
+            <p className="dynix-modal-description">{TARGET_MODAL.subtitle}</p>
+          </div>
+          <button
+            type="button"
+            onClick={onCancel}
+            aria-label={TARGET_MODAL.close}
+            className="grid size-8 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.03] text-white/55 outline-none transition-colors duration-150 hover:border-white/25 hover:bg-white/[0.08] hover:text-white focus-visible:ring-2 focus-visible:ring-cyan-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a1315]"
+          >
+            <X aria-hidden className="size-4" />
+          </button>
+        </header>
+
+        <div role="group" aria-label={TARGET_MODAL.listLabel} className="dynix-game-list">
+          {TARGETS.map((game) => {
+            const isSelected = game.id === selectedId;
+            return (
+              <button
+                key={game.id}
+                type="button"
+                onClick={() => setSelectedId(game.id)}
+                aria-pressed={isSelected}
+                className="dynix-game-option"
               >
-                {TARGET_MODAL.title}
-              </h2>
-              <p className="mt-1.5 text-sm text-white/55">{TARGET_MODAL.subtitle}</p>
-            </div>
+                <span className="dynix-game-number">{String(game.order).padStart(2, "0")}</span>
+                <span className="dynix-game-icon-frame">
+                  <img
+                    src={game.icon}
+                    alt=""
+                    draggable={false}
+                    className={`dynix-game-icon ${game.iconClassName ?? ""}`}
+                  />
+                </span>
+                <span className="dynix-game-name">{game.label}</span>
+                <span className="dynix-game-indicator">
+                  {isSelected && <Check aria-hidden className="size-3 text-cyan-100" />}
+                </span>
+              </button>
+            );
+          })}
+        </div>
+
+        <footer className="dynix-modal-footer">
+          <div className="min-w-0">
+            <p className="dynix-selected-label">{TARGET_MODAL.summaryLabel}</p>
+            <p className="dynix-selected-value" data-empty={selected ? undefined : "true"}>
+              {selected ? selected.label : TARGET_MODAL.emptyHint}
+            </p>
+          </div>
+          <div className="dynix-modal-actions">
             <button
               type="button"
               onClick={onCancel}
-              aria-label={TARGET_MODAL.close}
-              className="grid size-8 shrink-0 place-items-center rounded-full border border-white/10 bg-white/[0.03] text-white/55 outline-none transition-colors duration-150 hover:border-white/25 hover:bg-white/[0.08] hover:text-white focus-visible:ring-2 focus-visible:ring-cyan-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0e11]"
+              className="dynix-modal-button dynix-modal-button-secondary"
             >
-              <X aria-hidden className="size-4" />
+              {TARGET_MODAL.cancel}
             </button>
-          </header>
-
-          <div
-            role="group"
-            aria-label={TARGET_MODAL.listLabel}
-            className="relative mt-4 min-h-0 overflow-y-auto px-2 pb-1 sm:px-3"
-          >
-            <div className="flex flex-col gap-2">
-              {TARGETS.map((game) => {
-                const isSelected = game.id === selectedId;
-                return (
-                  <button
-                    key={game.id}
-                    type="button"
-                    onClick={() => setSelectedId(game.id)}
-                    aria-pressed={isSelected}
-                    className={`flex w-full items-center gap-4 rounded-xl border px-3 py-2.5 text-left outline-none transition-colors duration-150 focus-visible:ring-2 focus-visible:ring-cyan-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0e11] ${
-                      isSelected
-                        ? "border-cyan-300/60 bg-cyan-400/[0.07]"
-                        : "border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]"
-                    }`}
-                  >
-                    <span
-                      className={`w-6 shrink-0 font-mono text-[11px] tracking-[0.2em] ${
-                        isSelected ? "text-cyan-200" : "text-white/40"
-                      }`}
-                    >
-                      {String(game.order).padStart(2, "0")}
-                    </span>
-                    <span className="relative grid size-10 shrink-0 place-items-center overflow-hidden rounded-[10px] bg-white/[0.05]">
-                      <img
-                        src={game.icon}
-                        alt=""
-                        draggable={false}
-                        className={`size-full object-contain ${game.iconClassName ?? ""}`}
-                      />
-                      <span
-                        aria-hidden
-                        className="pointer-events-none absolute inset-0 rounded-[10px] ring-1 ring-inset ring-white/[0.08]"
-                      />
-                    </span>
-                    <span
-                      className={`flex-1 text-sm font-semibold uppercase tracking-[0.12em] ${
-                        isSelected ? "text-white" : "text-white/75"
-                      }`}
-                    >
-                      {game.label}
-                    </span>
-                    <span
-                      className={`grid size-5 shrink-0 place-items-center rounded-full border transition-colors duration-150 ${
-                        isSelected ? "border-cyan-300/70 bg-cyan-400/20" : "border-white/15"
-                      }`}
-                    >
-                      {isSelected && <Check aria-hidden className="size-3 text-cyan-100" />}
-                    </span>
-                  </button>
-                );
-              })}
-            </div>
+            <button
+              type="button"
+              onClick={() => selected && onConfirm(selected.id)}
+              disabled={!selected}
+              className="dynix-modal-button dynix-modal-button-primary"
+            >
+              {TARGET_MODAL.confirm}
+            </button>
           </div>
-
-          <footer className="relative mt-4 flex flex-col gap-3 border-t border-white/10 px-5 py-4 sm:flex-row sm:items-end sm:justify-between sm:px-6">
-            <div className="min-w-0">
-              <span className="block font-mono text-[9px] uppercase tracking-[0.3em] text-white/40">
-                {TARGET_MODAL.summaryLabel}
-              </span>
-              <span
-                className={`mt-1 block truncate text-sm font-semibold ${
-                  selected ? "text-cyan-100" : "text-white/40"
-                }`}
-              >
-                {selected ? selected.label : TARGET_MODAL.emptyHint}
-              </span>
-            </div>
-            <div className="flex w-full shrink-0 items-center gap-2.5 sm:w-auto">
-              <button
-                type="button"
-                onClick={onCancel}
-                className="inline-flex h-11 flex-1 items-center justify-center rounded-full border border-white/15 bg-white/[0.04] px-5 text-[13px] font-medium tracking-wide text-white/75 outline-none transition-colors duration-150 hover:border-white/30 hover:bg-white/[0.08] hover:text-white focus-visible:ring-2 focus-visible:ring-cyan-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0e11] sm:h-10 sm:flex-none"
-              >
-                {TARGET_MODAL.cancel}
-              </button>
-              <button
-                type="button"
-                onClick={() => selected && onConfirm(selected.id)}
-                disabled={!selected}
-                className="inline-flex h-11 flex-1 items-center justify-center rounded-full bg-white px-6 text-[13px] font-bold uppercase tracking-[0.14em] text-black outline-none transition-colors duration-150 hover:bg-cyan-100 focus-visible:ring-2 focus-visible:ring-cyan-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-[#0a0e11] disabled:cursor-not-allowed disabled:bg-white/15 disabled:text-white/35 sm:h-10 sm:flex-none"
-              >
-                {TARGET_MODAL.confirm}
-              </button>
-            </div>
-          </footer>
-        </motion.div>
-      </div>
+        </footer>
+      </motion.div>
     </motion.div>
   );
 }

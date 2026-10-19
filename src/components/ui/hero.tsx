@@ -1,9 +1,15 @@
-import { useEffect, useRef, useState, type Ref } from "react";
+import { useContext, useEffect, useRef, useState, type Ref } from "react";
 import { AnimatePresence, motion, useReducedMotion } from "motion/react";
-import { MeshGradient, PulsingBorder } from "@paper-design/shaders-react";
+import { PulsingBorder } from "@paper-design/shaders-react";
 import { ArrowUpRight, LoaderCircle } from "lucide-react";
 import TargetModal from "@/components/ui/target-modal";
+import AiConfigPanel from "@/components/ui/ai-config-panel";
+import { Monogram, MonogramDefs } from "@/components/ui/monogram";
+import { SceneBoostContext } from "@/components/ui/scene-background";
+import { adoptRunningScan, startActiveScan, useActiveScan } from "@/lib/active-scan";
+import { ScannerApiError } from "@/lib/scanner-api";
 import {
+  AI_CONFIG,
   BRAND,
   BRAND_LINE,
   BRAND_SUB,
@@ -24,25 +30,14 @@ import {
 
 const EASE: [number, number, number, number] = [0.16, 1, 0.3, 1];
 
-const TRACE_MS = 2600;
+function messageOf(error: unknown): string {
+  if (error instanceof ScannerApiError) return error.message;
+  if (error instanceof Error) return error.message;
+  return "Unexpected error.";
+}
 
 const SEAL_RADIUS = 83;
 const SEAL_CIRCUMFERENCE = 2 * Math.PI * SEAL_RADIUS;
-
-const SPARKS = [
-  { left: "6%", size: 2.5, delay: 0, duration: 8, drift: 34, ember: false },
-  { left: "13%", size: 1.5, delay: 1.4, duration: 10, drift: -22, ember: false },
-  { left: "21%", size: 2, delay: 2.8, duration: 9, drift: 18, ember: true },
-  { left: "29%", size: 1.5, delay: 0.7, duration: 11, drift: -30, ember: false },
-  { left: "38%", size: 2.5, delay: 3.6, duration: 8.5, drift: 26, ember: false },
-  { left: "46%", size: 1.5, delay: 1.9, duration: 10.5, drift: -16, ember: false },
-  { left: "54%", size: 2, delay: 4.4, duration: 9.5, drift: 22, ember: true },
-  { left: "61%", size: 1.5, delay: 0.4, duration: 11.5, drift: -26, ember: false },
-  { left: "69%", size: 2.5, delay: 2.4, duration: 8, drift: 30, ember: false },
-  { left: "77%", size: 1.5, delay: 5.2, duration: 10, drift: -18, ember: false },
-  { left: "84%", size: 2, delay: 1.1, duration: 9, drift: 24, ember: true },
-  { left: "92%", size: 1.5, delay: 3.1, duration: 11, drift: -28, ember: false },
-] as const;
 
 function fadeUp(delay: number, reduced: boolean) {
   return {
@@ -50,20 +45,6 @@ function fadeUp(delay: number, reduced: boolean) {
     animate: { opacity: 1, y: 0 },
     transition: { duration: reduced ? 0 : 0.9, delay: reduced ? 0 : delay, ease: EASE },
   };
-}
-
-function Monogram({ className }: { className?: string }) {
-  return (
-    <svg viewBox="0 0 64 64" fill="none" className={className} aria-hidden>
-      <path
-        d="M21 15 V49 M21 15 H31 C40 15 46 22.4 46 32 C46 41.6 40 49 31 49 H21"
-        stroke="url(#dynix-mono)"
-        strokeWidth="4.6"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
 }
 
 function TraceButton({
@@ -165,22 +146,36 @@ function RotatingSeal({ active, reduced }: { active: boolean; reduced: boolean }
 
 export default function Hero() {
   const [modalOpen, setModalOpen] = useState(false);
+  const [aiOpen, setAiOpen] = useState(false);
   const [target, setTarget] = useState<Game | null>(null);
-  const [tracing, setTracing] = useState(false);
+  const [startError, setStartError] = useState<string | null>(null);
   const buttonRef = useRef<HTMLButtonElement>(null);
-  const timerRef = useRef<number | null>(null);
+  const aiButtonRef = useRef<HTMLButtonElement>(null);
   const reduced = useReducedMotion() ?? false;
+  const setSceneBoost = useContext(SceneBoostContext);
+  const { inProgress: tracing } = useActiveScan();
 
+  // Returning to home while the backend is still tracing resumes the locked
+  // state instead of offering a fresh start (also survives a page reload).
   useEffect(() => {
-    return () => {
-      if (timerRef.current !== null) window.clearTimeout(timerRef.current);
-    };
+    void adoptRunningScan();
   }, []);
 
-  const startTrace = () => {
-    if (timerRef.current !== null) window.clearTimeout(timerRef.current);
-    setTracing(true);
-    timerRef.current = window.setTimeout(() => setTracing(false), TRACE_MS);
+  // Accelerate the shared mesh while the trace handoff plays.
+  useEffect(() => {
+    setSceneBoost(tracing);
+    return () => setSceneBoost(false);
+  }, [tracing, setSceneBoost]);
+
+  // The one place a scan starts: home → target → real scan. The trace
+  // animation keeps running here until the scan reaches a terminal state —
+  // and the button stays locked for exactly that window.
+  const beginScan = async () => {
+    try {
+      await startActiveScan();
+    } catch (error) {
+      setStartError(messageOf(error));
+    }
   };
 
   const closeTargetModal = () => {
@@ -188,63 +183,23 @@ export default function Hero() {
     requestAnimationFrame(() => buttonRef.current?.focus());
   };
 
+  const closeAiConfig = () => {
+    setAiOpen(false);
+    requestAnimationFrame(() => aiButtonRef.current?.focus());
+  };
+
   const confirmTarget = (id: string) => {
     setTarget(GAMES.find((game) => game.id === id) ?? null);
     setModalOpen(false);
+    setStartError(null);
     requestAnimationFrame(() => {
       buttonRef.current?.focus();
-      startTrace();
+      void beginScan();
     });
   };
 
   return (
-    <section className="relative flex min-h-svh w-full flex-col overflow-hidden bg-black text-white">
-      <MeshGradient
-        className="absolute inset-0 size-full"
-        colors={["#000000", "#06b6d4", "#0891b2", "#164e63", "#f97316"]}
-        speed={reduced ? 0 : tracing ? 0.45 : 0.3}
-      />
-      <MeshGradient
-        className="absolute inset-0 size-full opacity-60"
-        colors={["#000000", "#ffffff", "#06b6d4", "#f97316"]}
-        speed={reduced ? 0 : tracing ? 0.3 : 0.2}
-      />
-
-      <div className="vignette" />
-      <div className="scanlines" />
-      <div className="grain" />
-
-      <div className="pointer-events-none absolute inset-0 overflow-hidden">
-        {!reduced && SPARKS.map((spark, i) => (
-          <motion.span
-            key={i}
-            className={`absolute bottom-[-4%] rounded-full ${
-              spark.ember ? "bg-orange-400" : "bg-cyan-300"
-            }`}
-            style={{
-              left: spark.left,
-              width: spark.size,
-              height: spark.size,
-              boxShadow: spark.ember
-                ? "0 0 14px rgba(251, 146, 60, 0.75)"
-                : "0 0 14px rgba(34, 211, 238, 0.75)",
-            }}
-            animate={{
-              y: [0, -400 - i * 8, -760 - i * 16],
-              x: [0, spark.drift / 2, spark.drift],
-              opacity: [0, 0.85, 0],
-            }}
-            transition={{
-              duration: spark.duration,
-              delay: spark.delay,
-              repeat: Infinity,
-              ease: "linear",
-              times: [0, 0.16, 1],
-            }}
-          />
-        ))}
-      </div>
-
+    <section className="relative flex min-h-svh w-full flex-col overflow-hidden text-white">
       {tracing && !reduced && <div className="scan-sweep" />}
 
       <motion.nav
@@ -277,14 +232,28 @@ export default function Hero() {
           ))}
         </div>
 
-        <div className="flex items-center gap-3">
-          <span role="status" className="hidden items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] px-3 py-1.5 font-mono text-[10px] uppercase tracking-[0.25em] text-white/60 backdrop-blur sm:inline-flex">
-            <span
-              className={`size-1.5 rounded-full ${
-                tracing ? "animate-pulse bg-cyan-300" : target ? "bg-cyan-300" : "bg-emerald-400"
-              }`}
-            />
-            {tracing ? STATUS.active : target ? `Target — ${target.label}` : STATUS.idle}
+        <div className="flex items-center gap-2 sm:gap-3">
+          <span className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.04] py-1.5 pr-1.5 pl-3 font-mono text-[10px] uppercase tracking-[0.25em] text-white/60 backdrop-blur">
+            <span role="status" className="inline-flex items-center gap-2">
+              <span
+                className={`size-1.5 rounded-full ${
+                  tracing ? "animate-pulse bg-cyan-300" : target ? "bg-cyan-300" : "bg-emerald-400"
+                }`}
+              />
+              <span className="hidden sm:inline">
+                {tracing ? STATUS.active : target ? `Target — ${target.label}` : STATUS.idle}
+              </span>
+            </span>
+            <span aria-hidden className="h-3 w-px bg-white/15" />
+            <button
+              ref={aiButtonRef}
+              type="button"
+              onClick={() => setAiOpen(true)}
+              aria-haspopup="dialog"
+              className="rounded-full px-2 py-0.5 text-cyan-100/75 outline-none transition-colors duration-150 hover:bg-white/[0.08] hover:text-cyan-50 focus-visible:ring-2 focus-visible:ring-cyan-300/60 focus-visible:ring-offset-2 focus-visible:ring-offset-black"
+            >
+              {AI_CONFIG.trigger}
+            </button>
           </span>
         </div>
       </motion.nav>
@@ -344,6 +313,16 @@ export default function Hero() {
           <TraceButton active={tracing} onClick={() => setModalOpen(true)} buttonRef={buttonRef} />
         </motion.div>
 
+        {startError !== null && (
+          <motion.p
+            {...fadeUp(0.82, reduced)}
+            role="alert"
+            className="mt-4 max-w-md text-[12px] leading-5 text-red-200/85"
+          >
+            {CTAS.primaryError} <span className="text-white/45">{startError}</span>
+          </motion.p>
+        )}
+
         <motion.div {...fadeUp(0.92, reduced)} className="mt-14 flex flex-col items-center gap-4 [@media(max-height:800px)]:mt-8">
           <span className="font-mono text-[10px] uppercase tracking-[0.35em] text-white/55">
             {MONITOR_LABEL}
@@ -381,15 +360,7 @@ export default function Hero() {
 
       <RotatingSeal active={tracing} reduced={reduced} />
 
-      <svg className="absolute size-0" aria-hidden>
-        <defs>
-          <linearGradient id="dynix-mono" x1="0" y1="0" x2="1" y2="1">
-            <stop offset="0%" stopColor="#67e8f9" />
-            <stop offset="55%" stopColor="#22d3ee" />
-            <stop offset="100%" stopColor="#f97316" />
-          </linearGradient>
-        </defs>
-      </svg>
+      <MonogramDefs />
 
       <AnimatePresence>
         {modalOpen && (
@@ -399,6 +370,10 @@ export default function Hero() {
             onConfirm={confirmTarget}
           />
         )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {aiOpen && <AiConfigPanel onClose={closeAiConfig} />}
       </AnimatePresence>
     </section>
   );

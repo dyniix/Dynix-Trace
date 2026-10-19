@@ -1,0 +1,16 @@
+# Dependencies
+node_modules/
+
+# Local data — database, AI config (contains the API key), scan reports
+.data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite-journal
+reports/
+scan-reports/
+evidence/
+
+# Secrets & logs
+.env
+*.log

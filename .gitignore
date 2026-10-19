@@ -1,0 +1,24 @@
+# Dependencies
+node_modules/
+
+# Secrets & environment
+.env
+.env.*
+!.env.example
+
+# Local backend data (SQLite database + stored AI provider config/key)
+server/.data/
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.sqlite-journal
+
+# Local scan reports & evidence artifacts (root-level only, so src/ folders
+# such as src/components/evidence stay in the Tailwind content scan)
+/reports/
+/scan-reports/
+/evidence/
+
+# Logs
+logs/
+*.log
